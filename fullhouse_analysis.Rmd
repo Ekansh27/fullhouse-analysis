@@ -1,0 +1,101 @@
+---
+title: "Full House Analysis"
+author: "Ekansh Arora"
+date: "2025-09-19"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+# Exploring Era Adjustments in Baseball
+
+## Introduction
+
+I'm exploring the fullhouse package to understand how era adjustments work. My research question is pretty simple: do era adjustments change how we see different decades in baseball?
+
+## Setup
+
+```{r}
+library(fullhouse)
+library(tidyverse)
+
+# Load the batting data
+data(batters_adjusted)
+```
+
+## Looking at the Data
+
+```{r}
+# See what's in the dataset
+head(batters_adjusted)
+
+# Check the years covered
+range(batters_adjusted$year)
+```
+
+The data has ebWAR and efWAR columns. From what I understand, ebWAR is era-based and efWAR is era-free, so the difference should show the era adjustment.
+
+## Analysis
+
+```{r}
+# Focus on players with decent playing time
+qualified <- batters_adjusted %>% 
+  filter(PA > 400) %>% 
+  mutate(
+    decade = floor(year/10) * 10,
+    era_adjustment = ebWAR - efWAR
+  )
+
+# Look at averages by decade
+decade_summary <- qualified %>% 
+  group_by(decade) %>% 
+  summarise(
+    avg_adjustment = mean(era_adjustment, na.rm = TRUE),
+    players = n()
+  )
+
+decade_summary
+```
+
+```{r}
+# Make a simple plot
+library(ggplot2)
+
+ggplot(decade_summary, aes(x = decade, y = avg_adjustment)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Era Adjustments by Decade",
+       x = "Decade", 
+       y = "Average Adjustment") +
+  theme_minimal()
+```
+
+## Some Interesting Cases
+
+```{r}
+# Find players with big adjustments
+big_adjustments <- qualified %>% 
+  arrange(desc(abs(era_adjustment))) %>% 
+  select(name, year, BA, HR, ebWAR, efWAR, era_adjustment) %>% 
+  head(8)
+
+big_adjustments
+```
+
+## What I Found
+
+Looking at the results, there are some clear patterns:
+
+- Modern decades (2010s, 2020s) have positive adjustments around 0.14, meaning players are undervalued by raw stats
+- The 1900s show negative adjustments, suggesting players were overvalued back then
+- Some individual players have huge swings - Jim Piersall in 1953 goes from -2 WAR to +3 WAR after adjustment
+
+This makes sense because the competitive level has probably increased over time. Modern players face better competition, so their raw numbers don't capture how hard it is to perform well now.
+
+## Limitations
+
+This is just a preliminary look. I'd want to explore more about how the adjustments are calculated and maybe look at specific positions or player types. Also, I only looked at batting - pitching might show different patterns.
+
+The fullhouse package seems useful for comparing players across eras more fairly than just using raw stats.
